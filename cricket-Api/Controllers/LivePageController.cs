@@ -1,4 +1,5 @@
-﻿using HtmlAgilityPack;
+﻿using cricket_Api.Controllers.Dto;
+using HtmlAgilityPack;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.RegularExpressions;
 
@@ -62,12 +63,12 @@ namespace cricket_Api.Controllers
         }
 
         [HttpPost("/getlivescoredetail")]
-        public async Task<List<LiveHomePageMatchDetailOutputDto>> GetDetailAsync([FromBody] string nextPageUrl)
+        public async Task<LiveHomePageMatchDetailOutputDto> GetDetailAsync([FromBody] string nextPageUrl)
         {
             var url = string.Concat("https://www.cricbuzz.com/", nextPageUrl);
             var web = new HtmlWeb();
             var doc = await web.LoadFromWebAsync(url);
-            List<LiveHomePageMatchDetailOutputDto> matchOutput = new List<LiveHomePageMatchDetailOutputDto>();
+            LiveHomePageMatchDetailOutputDto matchOutput = new LiveHomePageMatchDetailOutputDto();
             var nodes = doc.DocumentNode.SelectSingleNode("//div[contains(@id,'page-wrapper')]").ChildNodes;
             var dataStreamNode = nodes.Where(c => c.Name == "div" && c.Attributes["class"].Value.Equals("cb-col cb-col-100 cb-bg-white")).FirstOrDefault();
             var dataStreamChildNodes = dataStreamNode.ChildNodes.Where(c => c.Name == "div").ToList();
@@ -77,72 +78,86 @@ namespace cricket_Api.Controllers
             var tourDetail = headerNode.ChildNodes.Where(c => c.Name == "div").LastOrDefault()?.ChildNodes.Where(c => c.Name == "a").ToList();
             var tourName = tourDetail[0].InnerText;
             var tourVenue = tourDetail[1].InnerText;
-            var Title = dataStreamNode.SelectSingleNode(".//h1").InnerText;
+            var TourTitle = dataStreamNode.SelectSingleNode(".//h1").InnerText;
+            var Matchstatus = bodyNode.SelectSingleNode(".//div[contains(@class,'cb-scrcrd-status')]").InnerText;
+            matchOutput.TourName = tourName;
+            matchOutput.TourVenue = tourVenue;
+            matchOutput.TourTitle = TourTitle;
+            matchOutput.MatchStatus = Matchstatus;
             //header end
 
             //Body details
-            var status = bodyNode.SelectSingleNode(".//div[contains(@class,'cb-scrcrd-status')]").InnerText;
-            var inningsOne = bodyNode.SelectSingleNode(".//div[contains(@id,'innings_1')]");
-            var inningsTwo = bodyNode.SelectSingleNode(".//div[contains(@id,'innings_2')]");
-            var InningsOneBatterNodes = inningsOne?.ChildNodes?.Where(c => c.Name == "div")?.FirstOrDefault()?.SelectNodes(".//div[contains(@class,'cb-scrd-itms')]")?.ToList();
-            var InnningsOneStatus = inningsOne?.ChildNodes?.Where(c => c.Name == "div")?.FirstOrDefault()?.ChildNodes?.Where(c => c.Name == "div")?.FirstOrDefault()?.InnerText;
-            foreach (var batter in InningsOneBatterNodes)
+            for (int i = 1; i < 4; i++)
             {
-                var endBatterNodes = batter.ChildNodes.Where(c => c.Name == "div").ToList();
-                if (endBatterNodes.Count() > 5)
+                var OutputInnigs = new Inning();
+                OutputInnigs.InningsName = string.Concat("Innings ", i);
+                var Innings = bodyNode.SelectSingleNode(".//div[contains(@id,'innings_" + i + "')]");
+                //  var inningsTwo = bodyNode.SelectSingleNode(".//div[contains(@id,'innings_2')]");
+                var InningsBatterNodes = Innings?.ChildNodes?.Where(c => c.Name == "div")?.FirstOrDefault()?.SelectNodes(".//div[contains(@class,'cb-scrd-itms')]")?.ToList();
+                var InnningsOneStatus = Innings?.ChildNodes?.Where(c => c.Name == "div")?.FirstOrDefault()?.ChildNodes?.Where(c => c.Name == "div")?.FirstOrDefault()?.InnerText;
+                List<BatterDetail>? BatterDetails = new List<BatterDetail>();
+                List<BatterExtra>? BatterExtras = new List<BatterExtra>();
+                if (InningsBatterNodes != null)
+                    foreach (var batter in InningsBatterNodes)
+                    {
+                        var endBatterNodes = batter.ChildNodes.Where(c => c.Name == "div").ToList();
+                        if (endBatterNodes.Count() > 5)
+                        {
+                            BatterDetail batterDetail = new BatterDetail();
+                           batterDetail. BatterName = endBatterNodes[0].InnerText;
+                           batterDetail. BattingStatus = endBatterNodes[1].InnerText;
+                           batterDetail. BatterRuns = endBatterNodes[2].InnerText;
+                           batterDetail. BatterBalls = endBatterNodes[3].InnerText;
+                           batterDetail. BatterFours = endBatterNodes[4].InnerText;
+                           batterDetail. BatterSixs = endBatterNodes[5].InnerText;
+                           batterDetail. BatterStrikeRate = endBatterNodes[6].InnerText;
+                            BatterDetails.Add(batterDetail);
+                        }
+                        else
+                        {
+                            BatterExtra batterExtra = new BatterExtra();
+                            batterExtra. TipOne = endBatterNodes[0].InnerText;
+                            batterExtra. TipTwo = endBatterNodes[1].InnerText;
+                            batterExtra. TipThree = batterExtra.TipOne != " Did not Bat " && batterExtra.TipOne != " Yet to Bat " ? endBatterNodes[2]?.InnerText : "";
+                            BatterExtras.Add(batterExtra);
+                        }
+                    }
+                OutputInnigs.BatterDetails = BatterDetails;
+                OutputInnigs.BatterExtras = BatterExtras;
+                var InningsBowlerNodes = Innings?.ChildNodes?.Where(c => c.Name == "div")?.Take(4).LastOrDefault()?.SelectNodes(".//div[contains(@class,'cb-scrd-itms')]")?.ToList();
+                List<BowlerDetail>? BowlerDetails =new List<BowlerDetail>();
+                if (InningsBowlerNodes != null)
+                    foreach (var bowler in InningsBowlerNodes)
+                    {
+                        var endBowlerNodes = bowler.ChildNodes.Where(c => c.Name == "div").ToList();
+                        if (endBowlerNodes.Count() > 7)
+                        {
+                            BowlerDetail bowlerDetail = new BowlerDetail();
+                            bowlerDetail.BowlerName = endBowlerNodes[0].InnerText;
+                            bowlerDetail.BowlergOvers = endBowlerNodes[1].InnerText;
+                            bowlerDetail.BowlerMaiden = endBowlerNodes[2].InnerText;
+                            bowlerDetail.BowlerRuns = endBowlerNodes[3].InnerText;
+                            bowlerDetail.BowlerWicket = endBowlerNodes[4].InnerText;
+                            bowlerDetail.BowlerNoBall = endBowlerNodes[5].InnerText;
+                            bowlerDetail.BowlerWide = endBowlerNodes[6].InnerText;
+                            bowlerDetail.BowlerEco = endBowlerNodes[7].InnerText;
+                            BowlerDetails.Add(bowlerDetail);
+                        }
+
+                    }
+                OutputInnigs.BowlerDetails = BowlerDetails;
+                if ((OutputInnigs.BatterDetails!=null && OutputInnigs.BatterDetails.Count()>0 )|| (OutputInnigs.BowlerDetails!=null&&  OutputInnigs.BowlerDetails.Count() > 0))
                 {
-                    var BatterName = endBatterNodes[0].InnerText;
-                    var BattingStatus = endBatterNodes[1].InnerText;
-                    var BatterRuns = endBatterNodes[2].InnerText;
-                    var BatterBalls = endBatterNodes[3].InnerText;
-                    var BatterFours = endBatterNodes[4].InnerText;
-                    var BatterSixs = endBatterNodes[5].InnerText;
-                    var BatterStrikeRate = endBatterNodes[6].InnerText;
-                }
-                else
-                {
-                    var TipOne = endBatterNodes[0].InnerText;
-                    var TipTwo = endBatterNodes[1].InnerText;
-                    var TipThree = TipOne != " Did not Bat " && TipOne!= " Yet to Bat " ? endBatterNodes[2]?.InnerText : "";
+
+                    matchOutput.Innings?.Add(OutputInnigs);
                 }
             }
-            var InningsOneBowlerNodes = inningsOne?.ChildNodes?.Where(c => c.Name == "div")?.Take(4).LastOrDefault()?.SelectNodes(".//div[contains(@class,'cb-scrd-itms')]")?.ToList();
-            foreach (var bowler in InningsOneBowlerNodes)
-            {
-                var endBowlerNodes = bowler.ChildNodes.Where(c => c.Name == "div").ToList();
-                if (endBowlerNodes.Count() > 5)
-                {
-                    var BowlerName = endBowlerNodes[0].InnerText;
-                    var BowlergOvers = endBowlerNodes[1].InnerText;
-                    var BowlerMaiden= endBowlerNodes[2].InnerText;
-                    var BowlerRuns = endBowlerNodes[3].InnerText;
-                    var BowlerWicket = endBowlerNodes[4].InnerText;
-                    var BowlerNoBall = endBowlerNodes[5].InnerText;
-                    var BowlerWide = endBowlerNodes[6].InnerText;
-                    var BowlerEco = endBowlerNodes[7].InnerText;
-                }
-               
-            }
-            //body ends
+
+            //Body details end
 
             return matchOutput;
         }
     }
-    public class LiveHomePageMatchOutputDto
-    {
-        public string? Title { get; set; } = String.Empty;
-        public string? Url { get; set; } = String.Empty;
-        public string? TeamOne { get; set; } = String.Empty;
-        public string? TeamOneScore { get; set; } = String.Empty;
-        public string? TeamTwo { get; set; } = String.Empty;
-        public string? TeamTwoScore { get; set; } = String.Empty;
-        public string? Results { get; set; } = String.Empty;
-        public string? DateTime { get; set; } = String.Empty;
-
-    }
-    public class LiveHomePageMatchDetailOutputDto
-    {
 
 
-    }
 }
