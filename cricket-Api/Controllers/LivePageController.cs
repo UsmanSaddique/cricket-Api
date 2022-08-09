@@ -81,9 +81,10 @@ namespace cricket_Api.Controllers
             var TourTitle = dataStreamNode.SelectSingleNode(".//h1").InnerText;
             var Matchstatus = bodyNode.SelectSingleNode(".//div[contains(@class,'cb-scrcrd-status')]").InnerText;
             matchOutput.TourName = tourName;
-            matchOutput.TourVenue = tourVenue;
+            matchOutput.TourVenue = tourVenue.Replace("&nbsp;", " ");
             matchOutput.TourTitle = TourTitle;
-            matchOutput.MatchStatus = Matchstatus;
+            string StatusWithoutSpace = Matchstatus.Replace("&nbsp;", " ");
+            matchOutput.MatchStatus = StatusWithoutSpace;
             //header end
 
             //Body details
@@ -95,6 +96,7 @@ namespace cricket_Api.Controllers
                 //  var inningsTwo = bodyNode.SelectSingleNode(".//div[contains(@id,'innings_2')]");
                 var InningsBatterNodes = Innings?.ChildNodes?.Where(c => c.Name == "div")?.FirstOrDefault()?.SelectNodes(".//div[contains(@class,'cb-scrd-itms')]")?.ToList();
                 var InnningsOneStatus = Innings?.ChildNodes?.Where(c => c.Name == "div")?.FirstOrDefault()?.ChildNodes?.Where(c => c.Name == "div")?.FirstOrDefault()?.InnerText;
+                OutputInnigs.InningsStatus = InnningsOneStatus;
                 List<BatterDetail>? BatterDetails = new List<BatterDetail>();
                 List<BatterExtra>? BatterExtras = new List<BatterExtra>();
                 if (InningsBatterNodes != null)
@@ -117,8 +119,8 @@ namespace cricket_Api.Controllers
                         {
                             BatterExtra batterExtra = new BatterExtra();
                             batterExtra. TipOne = endBatterNodes[0].InnerText;
-                            batterExtra. TipTwo = endBatterNodes[1].InnerText;
-                            batterExtra. TipThree = batterExtra.TipOne != " Did not Bat " && batterExtra.TipOne != " Yet to Bat " ? endBatterNodes[2]?.InnerText : "";
+                            batterExtra. TipTwo = endBatterNodes[1].InnerText.Replace("&nbsp;", " ");
+                            batterExtra. TipThree = batterExtra.TipOne != " Did not Bat " && batterExtra.TipOne != " Yet to Bat " ? endBatterNodes[2]?.InnerText.Replace("&nbsp;", " ") : "";
                             BatterExtras.Add(batterExtra);
                         }
                     }

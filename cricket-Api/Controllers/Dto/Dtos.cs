@@ -25,6 +25,7 @@
     public class Inning
     {
         public string? InningsName { get; set; } = string.Empty;
+        public string? InningsStatus { get; set; } = string.Empty;
         public List<BatterDetail>? BatterDetails { get; set; } = new List<BatterDetail>();
         public List<BatterExtra>? BatterExtras { get; set; } = new List<BatterExtra>();
         public List<BowlerDetail>? BowlerDetails { get; set; } = new List<BowlerDetail>();
