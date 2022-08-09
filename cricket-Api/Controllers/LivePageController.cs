@@ -127,6 +127,11 @@ namespace cricket_Api.Controllers
                 OutputInnigs.BatterDetails = BatterDetails;
                 OutputInnigs.BatterExtras = BatterExtras;
                 var InningsBowlerNodes = Innings?.ChildNodes?.Where(c => c.Name == "div")?.Take(4).LastOrDefault()?.SelectNodes(".//div[contains(@class,'cb-scrd-itms')]")?.ToList();
+                if (InningsBowlerNodes==null)
+                {
+                     InningsBowlerNodes = Innings?.ChildNodes?.Where(c => c.Name == "div")?.Take(2).LastOrDefault()?.SelectNodes(".//div[contains(@class,'cb-scrd-itms')]")?.ToList();
+
+                }
                 List<BowlerDetail>? BowlerDetails =new List<BowlerDetail>();
                 if (InningsBowlerNodes != null)
                     foreach (var bowler in InningsBowlerNodes)
